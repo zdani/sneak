@@ -1,0 +1,58 @@
+# Normalize text files to LF in the repository
+* text=auto eol=lf
+
+# Unity text assets
+*.cs text
+*.shader text
+*.cginc text
+*.compute text
+*.hlsl text
+*.shadergraph text
+*.mat text
+*.meta text
+*.prefab text
+*.unity text
+*.asset text
+*.anim text
+*.json text
+*.asmdef text
+*.inputactions text
+*.txt text
+*.md text
+
+# Binary assets
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.tga binary
+*.tif binary
+*.tiff binary
+*.bmp binary
+*.psd binary
+*.ai binary
+*.fbx binary
+*.zip binary
+*.dll binary
+*.exe binary
+*.mp3 binary
+*.ogg binary
+*.wav binary
+*.mp4 binary
+*.mov binary
+*.avi binary
+
+ # Force text files to use LF
+* text eol=lf
+
+# Binary files (no line endings)
+*.png binary
+*.jpg binary
+*.fbx binary
+*.mp4 binary
+*.dll binary
+*.unity binary
+*.prefab binary
+*.asset binary
+*.anim binary
+*.controller binary

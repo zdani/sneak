@@ -12,7 +12,7 @@ PlayerSettings:
   targetDevice: 2
   useOnDemandResources: 0
   accelerometerFrequency: 60
-  companyName: DefaultCompany
+  companyName: SunBelow
   productName: Thieves
   defaultCursor: {fileID: 0}
   cursorHotspot: {x: 0, y: 0}
@@ -817,7 +817,9 @@ PlayerSettings:
   webGLCloseOnQuit: 0
   webWasm2023: 0
   scriptingDefineSymbols: {}
-  additionalCompilerArguments: {}
+  additionalCompilerArguments:
+    Standalone:
+    - -nullable+
   platformArchitecture: {}
   scriptingBackend:
     Android: 1
