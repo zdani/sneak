@@ -1,15 +1,15 @@
-using System;
-using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.InputSystem;
 
-[RequireComponent(typeof(UnityEngine.Camera))]
+[RequireComponent(typeof(Camera))]
 public class PlayerCamera : MonoBehaviour
 {
 #nullable disable
-    private UnityEngine.Camera engineCamera;
+    private Camera engineCamera;
+    [SerializeField] private Transform target; // Player character to follow
 #nullable enable
     [Header("Target")]
-    [SerializeField] private Transform? target; // Player character to follow
+
     [SerializeField] private Vector3 targetOffset = new Vector3(0f, 1.6f, 0f); // eye height
 
     [Header("Orbit & Distance")]
@@ -60,54 +60,52 @@ public class PlayerCamera : MonoBehaviour
     private float lastInputTime;
     private Vector3 previousTargetPosition;
 
-    // External input passthroughs (optional if using new Input System)
-    private Vector2 externalLookInput; // set via FeedLookInput()
-    private float externalZoomInput;   // set via FeedZoomInput()
-    private bool externalShoulderSwap;
+    [Header("Input Actions (New Input System)")]
+    [SerializeField] private InputActionReference lookAction;   // Vector2
+    [SerializeField] private InputActionReference zoomAction;   // float (scroll or gamepad)
+    [SerializeField] private InputActionReference shoulderSwapAction; // button
+
+    private bool shoulderSwapPressed;
 
     void Awake()
     {
-        engineCamera = GetComponent<UnityEngine.Camera>();
+        engineCamera = GetComponent<Camera>();
         leftShoulder = startLeftShoulder;
         desiredDistance = Mathf.Clamp(distance, minDistance, maxDistance);
         currentDistance = desiredDistance;
+        EnableAction(lookAction);
+        EnableAction(zoomAction);
+        EnableAction(shoulderSwapAction);
     }
 
     void Start()
     {
-        if (target == null)
-        {
-            var player = GameObject.FindGameObjectWithTag("Player");
-            if (player != null) target = player.transform;
-        }
-
         var euler = transform.rotation.eulerAngles;
         yaw = euler.y;
         pitch = NormalizePitch(euler.x);
-        previousTargetPosition = (target != null) ? target.position : transform.position;
+        previousTargetPosition = target.position;
         if (engineCamera != null)
         {
             engineCamera.fieldOfView = baseFOV;
         }
     }
 
+    void OnDisable()
+    {
+        DisableAction(lookAction);
+        DisableAction(zoomAction);
+        DisableAction(shoulderSwapAction);
+    }
+
     void Update()
     {
-        // Gather inputs each frame
-        Vector2 lookInput = externalLookInput;
-        lookInput += new Vector2(GetAxis("Mouse X"), GetAxis("Mouse Y"));
+        // Gather inputs from the new Input System only
+        Vector2 lookInput = (lookAction != null && lookAction.action != null) ? lookAction.action.ReadValue<Vector2>() : Vector2.zero;
+        float zoomInput = (zoomAction != null && zoomAction.action != null) ? zoomAction.action.ReadValue<float>() : 0f;
+        HandleInput(lookInput, zoomInput, ReadShoulderSwap());
 
-        float zoomInput = externalZoomInput;
-        zoomInput += -Input.GetAxisRaw("Mouse ScrollWheel"); // scroll up = zoom in
-
-        bool shoulderSwap = GetShoulderSwap();
-
-        HandleInput(lookInput, zoomInput, shoulderSwap);
-
-        // Reset one-shot external inputs
-        externalShoulderSwap = false;
-        externalZoomInput = 0f;
-        externalLookInput = Vector2.zero;
+        // Reset one-shot
+        shoulderSwapPressed = false;
     }
 
     void LateUpdate()
@@ -127,9 +125,7 @@ public class PlayerCamera : MonoBehaviour
         // Compute camera pivot and shoulder offset
         Quaternion yawOnly = Quaternion.Euler(0f, yaw, 0f);
         Vector3 shoulder = yawOnly * (leftShoulder ? Vector3.left : Vector3.right) * shoulderOffset;
-        Vector3 pivot = Vector3.Lerp(transform.position + Vector3.zero, targetPos, 1f); // direct pivot at target
-        pivot = Vector3.Lerp(pivot, targetPos, 1f); // keep explicit for readability
-        pivot += shoulder; // shoulder offset applied at pivot
+        Vector3 pivot = targetPos + shoulder;
 
         // Desired rotation
         Quaternion desiredRotation = Quaternion.Euler(pitch, yaw, 0f);
@@ -145,8 +141,12 @@ public class PlayerCamera : MonoBehaviour
         transform.position = smoothedPos;
         transform.rotation = Quaternion.Slerp(transform.rotation, desiredRotation, Mathf.Clamp01(Time.deltaTime / Mathf.Max(0.0001f, rotationSmoothTime)));
 
-        // Recenter if needed
-        AutoRecenterYaw(targetVelocity);
+        // Recenter if needed (only when moving forward relative to camera)
+        Vector3 planarVel = new Vector3(targetVelocity.x, 0f, targetVelocity.z);
+        if (Vector3.Dot(planarVel, transform.forward) > 0.2f)
+        {
+            AutoRecenterYaw(targetVelocity);
+        }
 
         // FOV kick
         if (engineCamera != null)
@@ -190,6 +190,17 @@ public class PlayerCamera : MonoBehaviour
     }
 
     
+    private void EnableAction(InputActionReference reference)
+    {
+        if (reference == null || reference.action == null) return;
+        if (!reference.action.enabled) reference.action.Enable();
+    }
+
+    private void DisableAction(InputActionReference reference)
+    {
+        if (reference == null || reference.action == null) return;
+        if (reference.action.enabled) reference.action.Disable();
+    }
 
     private float ResolveCollision(Vector3 pivot, Quaternion rotation, float desiredDist)
     {
@@ -226,37 +237,21 @@ public class PlayerCamera : MonoBehaviour
         return a;
     }
 
-    private static float GetAxis(string name)
-    {
-        // GetAxisRaw for sticks if mapped; fallback to 0
-        float v = 0f;
-        try { v = Input.GetAxisRaw(name); } catch { /* ignore if axis not defined */ }
-        return float.IsNaN(v) ? 0f : v;
-    }
+    
 
     
 
-    private bool GetShoulderSwap()
+    private bool ReadShoulderSwap()
     {
-        bool swap = externalShoulderSwap;
-        if (Input.GetKeyDown(KeyCode.V)) swap = true;
-        return swap;
+        if (shoulderSwapAction == null || shoulderSwapAction.action == null) return false;
+        if (!shoulderSwapPressed && shoulderSwapAction.action.WasPressedThisFrame())
+        {
+            shoulderSwapPressed = true;
+            return true;
+        }
+        return false;
     }
 
-    // Optional public API for new Input System integration
-    public void FeedLookInput(Vector2 delta)
-    {
-        externalLookInput += delta;
-    }
-    public void FeedZoomInput(float delta)
-    {
-        externalZoomInput += delta;
-    }
-    
-    public void ShoulderSwap()
-    {
-        externalShoulderSwap = true;
-    }
     public void SetTarget(Transform t)
     {
         target = t;

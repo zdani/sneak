@@ -1,5 +1,5 @@
-using System;
 using UnityEngine;
+using UnityEngine.InputSystem;
 
 [RequireComponent(typeof(CharacterController))]
 public class ThiefController : MonoBehaviour
@@ -14,7 +14,7 @@ public class ThiefController : MonoBehaviour
     [SerializeField] private float crouchSpeed = 2.0f;
     [SerializeField] private float acceleration = 18f;
     [SerializeField] private float deceleration = 24f;
-    [SerializeField] private float rotationSpeed = 720f; // deg/sec
+    [SerializeField] private float mouseYawSensitivity = 360f; // deg/sec per mouse X unit
 
     [Header("Jump/Gravity")]
     [SerializeField] private float gravity = -30f;
@@ -23,14 +23,12 @@ public class ThiefController : MonoBehaviour
     [SerializeField] private float jumpCooldown = 0.15f;
 
     [Header("Dodge (Step)")]
-    [SerializeField] private KeyCode sprintDodgeKey = KeyCode.LeftShift; // tap to dodge, hold to sprint
     [SerializeField] private float dodgeDistance = 4.0f;
     [SerializeField] private float dodgeDuration = 0.2f;
     [SerializeField] private float dodgeCooldown = 0.5f;
     [SerializeField] private float minDodgeInput = 0.2f; // min move input magnitude to allow dodge
 
     [Header("Crouch")]
-    [SerializeField] private KeyCode crouchKey = KeyCode.LeftControl;
     [SerializeField] private float crouchHeightMultiplier = 0.6f;
 
     // State
@@ -46,47 +44,88 @@ public class ThiefController : MonoBehaviour
     private float defaultControllerHeight;
     private Vector3 defaultControllerCenter;
 
-    // External input API (optional)
-    private Vector2 fedMove;
-    private bool fedJump;
-    private bool fedCrouchToggle;
-    private bool fedSprintHeld;
-    private bool fedDodgeTap;
+    [Header("Input Actions (New Input System)")]
+    [SerializeField] private InputActionReference moveAction;
+    [SerializeField] private InputActionReference lookAction;
+    [SerializeField] private InputActionReference jumpAction;
+    [SerializeField] private InputActionReference sprintAction; // hold
+    [SerializeField] private InputActionReference dodgeAction;  // tap
+    [SerializeField] private InputActionReference crouchAction; // toggle
+
+    // Runtime default actions (used if references are unassigned)
+    private InputAction? rtMove;
+    private InputAction? rtLook;
+    private InputAction? rtJump;
+    private InputAction? rtSprint;
+    private InputAction? rtDodge;
+    private InputAction? rtCrouch;
 
     void Awake()
     {
         controller = GetComponent<CharacterController>();
         defaultControllerHeight = controller.height;
         defaultControllerCenter = controller.center;
+
+        // Ensure CharacterController is configured reasonably and not intersecting the ground
+        SanitizeCharacterController();
+    }
+
+    void OnEnable()
+    {
+        EnsureRuntimeDefaults();
+        EnableActions(moveAction, lookAction, jumpAction, sprintAction, dodgeAction, crouchAction);
+        EnableAction(rtMove);
+        EnableAction(rtLook);
+        EnableAction(rtJump);
+        EnableAction(rtSprint);
+        EnableAction(rtDodge);
+        EnableAction(rtCrouch);
+    }
+
+    void OnDisable()
+    {
+        DisableActions(moveAction, lookAction, jumpAction, sprintAction, dodgeAction, crouchAction);
+        DisableAction(rtMove);
+        DisableAction(rtLook);
+        DisableAction(rtJump);
+        DisableAction(rtSprint);
+        DisableAction(rtDodge);
+        DisableAction(rtCrouch);
     }
 
     void Update()
     {
-        // Read input (keyboard/mouse by default, can be overridden by feed API)
-        Vector2 inputMove = fedMove;
-        inputMove.x += SafeAxis("Horizontal");
-        inputMove.y += SafeAxis("Vertical");
+        // Read input from the new Input System
+        var moveAct = (moveAction != null && moveAction.action != null) ? moveAction.action : rtMove;
+        Vector2 inputMove = (moveAct != null) ? moveAct.ReadValue<Vector2>() : Vector2.zero;
         inputMove = Vector2.ClampMagnitude(inputMove, 1f);
-
-        bool jumpPressed = fedJump || Input.GetKeyDown(KeyCode.Space);
-        bool sprintHeld = fedSprintHeld || Input.GetKey(sprintDodgeKey);
-        bool dodgeTap = fedDodgeTap || Input.GetKeyDown(sprintDodgeKey);
-        bool crouchToggle = fedCrouchToggle || Input.GetKeyDown(crouchKey);
-
-        fedMove = Vector2.zero;
-        fedJump = false;
-        fedCrouchToggle = false;
-        fedSprintHeld = false;
-        fedDodgeTap = false;
+        var lookAct = (lookAction != null && lookAction.action != null) ? lookAction.action : rtLook;
+        Vector2 look = (lookAct != null) ? lookAct.ReadValue<Vector2>() : Vector2.zero;
+        float mouseX = look.x;
+        var jAct = (jumpAction != null && jumpAction.action != null) ? jumpAction.action : rtJump;
+        var sAct = (sprintAction != null && sprintAction.action != null) ? sprintAction.action : rtSprint;
+        var dAct = (dodgeAction != null && dodgeAction.action != null) ? dodgeAction.action : rtDodge;
+        var cAct = (crouchAction != null && crouchAction.action != null) ? crouchAction.action : rtCrouch;
+        bool jumpPressed = jAct != null && jAct.WasPressedThisFrame();
+        bool sprintHeldLocal = sAct != null && sAct.IsPressed();
+        bool dodgeTap = dAct != null && dAct.WasPressedThisFrame();
+        bool crouchToggle = cAct != null && cAct.WasPressedThisFrame();
 
         HandleCrouch(crouchToggle);
-        HandleGroundAndGravity();
+        if (controller.isGrounded) lastGroundedTime = Time.time;
         HandleJump(jumpPressed);
         HandleDodge(dodgeTap, inputMove);
+        
+        // Rotate character ONLY from mouse X input (no rotation from WASD)
+        if (Mathf.Abs(mouseX) > 0.0001f)
+        {
+            float yawDelta = mouseX * mouseYawSensitivity * Time.deltaTime;
+            transform.Rotate(0f, yawDelta, 0f, Space.World);
+        }
 
         // Determine movement speeds
         bool canSprint = !isCrouched && !isDodging;
-        float targetSpeed = isCrouched ? crouchSpeed : (sprintHeld && canSprint ? runSpeed : walkSpeed);
+        float targetSpeed = isCrouched ? crouchSpeed : (sprintHeldLocal && canSprint ? runSpeed : walkSpeed);
 
         // Compute camera-relative desired direction
         Vector3 desiredDirWorld = GetCameraRelativeDirection(inputMove);
@@ -100,13 +139,7 @@ public class ThiefController : MonoBehaviour
         // If dodging, override planar velocity with dash
         Vector3 finalPlanarVelocity = isDodging ? (dodgeDirectionWorld * (dodgeDistance / Mathf.Max(0.01f, dodgeDuration))) : currentVelocityWorld;
 
-        // Face move direction if any (prioritize dodge dir)
-        Vector3 lookDir = isDodging ? dodgeDirectionWorld : desiredDirWorld;
-        if (lookDir.sqrMagnitude > 0.0001f)
-        {
-            Quaternion targetRot = Quaternion.LookRotation(lookDir, Vector3.up);
-            transform.rotation = Quaternion.RotateTowards(transform.rotation, targetRot, rotationSpeed * Time.deltaTime);
-        }
+        // No rotation from movement input; facing is controlled solely by mouse
 
         // Compose motion
         Vector3 motion = finalPlanarVelocity;
@@ -138,14 +171,6 @@ public class ThiefController : MonoBehaviour
         targetCenter.y = isCrouched ? defaultControllerCenter.y * crouchHeightMultiplier : defaultControllerCenter.y;
         controller.height = targetHeight;
         controller.center = targetCenter;
-    }
-
-    private void HandleGroundAndGravity()
-    {
-        if (controller.isGrounded)
-        {
-            lastGroundedTime = Time.time;
-        }
     }
 
     private void HandleJump(bool pressed)
@@ -196,16 +221,109 @@ public class ThiefController : MonoBehaviour
         return dir.sqrMagnitude > 1f ? dir.normalized : dir;
     }
 
-    private static float SafeAxis(string axis)
+    private void EnableAction(InputActionReference? reference)
     {
-        try { return Input.GetAxisRaw(axis); } catch { return 0f; }
+        if (reference == null || reference.action == null) return;
+        if (!reference.action.enabled) reference.action.Enable();
     }
 
-    // Optional feed-input API for new Input System
-    public void FeedMoveInput(Vector2 move) { fedMove += move; }
-    public void FeedJumpPressed() { fedJump = true; }
-    public void FeedSprintHeld(bool held) { fedSprintHeld = fedSprintHeld || held; }
-    public void FeedDodgeTap() { fedDodgeTap = true; }
-    public void FeedCrouchToggle() { fedCrouchToggle = true; }
+    private void DisableAction(InputActionReference? reference)
+    {
+        if (reference == null || reference.action == null) return;
+        if (reference.action.enabled) reference.action.Disable();
+    }
+
+    private void EnableActions(params InputActionReference?[] refs)
+    {
+        foreach (var r in refs) EnableAction(r);
+    }
+
+    private void DisableActions(params InputActionReference?[] refs)
+    {
+        foreach (var r in refs) DisableAction(r);
+    }
+
+    private void EnableAction(InputAction? action)
+    {
+        if (action == null) return;
+        if (!action.enabled) action.Enable();
+    }
+
+    private void DisableAction(InputAction? action)
+    {
+        if (action == null) return;
+        if (action.enabled) action.Disable();
+    }
+
+    private void EnsureRuntimeDefaults()
+    {
+        if (rtMove == null)
+        {
+            rtMove = new InputAction(name: "Move", type: InputActionType.Value, expectedControlType: "Vector2");
+            var comp = rtMove.AddCompositeBinding("2DVector");
+            comp.With("Up", "<Keyboard>/w").With("Down", "<Keyboard>/s").With("Left", "<Keyboard>/a").With("Right", "<Keyboard>/d");
+            rtMove.AddBinding("<Gamepad>/leftStick");
+        }
+        if (rtLook == null)
+        {
+            rtLook = new InputAction(name: "Look", type: InputActionType.Value, expectedControlType: "Vector2");
+            rtLook.AddBinding("<Mouse>/delta");
+            rtLook.AddBinding("<Gamepad>/rightStick");
+        }
+        if (rtJump == null)
+        {
+            rtJump = new InputAction(name: "Jump", type: InputActionType.Button);
+            rtJump.AddBinding("<Keyboard>/space");
+            rtJump.AddBinding("<Gamepad>/buttonSouth");
+        }
+        if (rtSprint == null)
+        {
+            rtSprint = new InputAction(name: "Sprint", type: InputActionType.Button);
+            rtSprint.AddBinding("<Keyboard>/leftShift");
+            rtSprint.AddBinding("<Gamepad>/leftStickPress");
+        }
+        if (rtDodge == null)
+        {
+            rtDodge = new InputAction(name: "Dodge", type: InputActionType.Button);
+            rtDodge.AddBinding("<Keyboard>/leftShift");
+            rtDodge.AddBinding("<Gamepad>/rightShoulder");
+        }
+        if (rtCrouch == null)
+        {
+            rtCrouch = new InputAction(name: "Crouch", type: InputActionType.Button);
+            rtCrouch.AddBinding("<Keyboard>/leftCtrl");
+            rtCrouch.AddBinding("<Gamepad>/rightStickPress");
+        }
+    }
+
+    private void SanitizeCharacterController()
+    {
+        // Remove physics components to avoid conflicts with CharacterController
+        if (TryGetComponent<Rigidbody>(out var rb))
+        {
+            Destroy(rb);
+        }
+        if (TryGetComponent<CapsuleCollider>(out var cap))
+        {
+            Destroy(cap);
+        }
+
+        // Sensible defaults if left at zeros
+        if (controller.height < 1.2f) controller.height = 1.8f;
+        float half = controller.height * 0.5f;
+        if (controller.radius < 0.2f) controller.radius = Mathf.Min(0.5f, half - 0.05f);
+        if (controller.skinWidth < 0.02f) controller.skinWidth = 0.08f;
+        if (controller.stepOffset < 0.1f) controller.stepOffset = Mathf.Clamp(controller.height * 0.2f, 0.25f, 0.5f);
+        if (controller.slopeLimit < 30f) controller.slopeLimit = 45f;
+        controller.center = new Vector3(0f, half, 0f);
+
+        // If starting intersecting the ground, nudge upward by a small amount
+        if (Physics.CheckCapsule(transform.position + Vector3.up * (controller.radius + 0.01f),
+                                  transform.position + Vector3.up * (controller.height - controller.radius - 0.01f),
+                                  controller.radius, ~0, QueryTriggerInteraction.Ignore))
+        {
+            transform.position += Vector3.up * 0.2f;
+        }
+    }
 }
 

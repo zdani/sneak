@@ -130,8 +130,8 @@ GameObject:
   - component: {fileID: 404565221}
   - component: {fileID: 404565220}
   - component: {fileID: 404565219}
-  - component: {fileID: 404565218}
   - component: {fileID: 404565217}
+  - component: {fileID: 404565222}
   m_Layer: 9
   m_Name: Thief
   m_TagString: Player
@@ -164,29 +164,6 @@ CharacterController:
   m_SkinWidth: 0.08
   m_MinMoveDistance: 0.001
   m_Center: {x: 0, y: 0.9, z: 0}
---- !u!136 &404565218
-CapsuleCollider:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 404565216}
-  m_Material: {fileID: 0}
-  m_IncludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_ExcludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_LayerOverridePriority: 0
-  m_IsTrigger: 0
-  m_ProvidesContacts: 0
-  m_Enabled: 1
-  serializedVersion: 2
-  m_Radius: 0.5
-  m_Height: 2
-  m_Direction: 1
-  m_Center: {x: 0, y: 0, z: 0}
 --- !u!23 &404565219
 MeshRenderer:
   m_ObjectHideFlags: 0
@@ -249,12 +226,45 @@ Transform:
   m_GameObject: {fileID: 404565216}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 275, y: 158.2, z: 0}
+  m_LocalPosition: {x: 275, y: 161.13, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &404565222
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 404565216}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5db08efe9f4634c47aa4764006253eb8, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  walkSpeed: 3.6
+  runSpeed: 6.8
+  crouchSpeed: 2
+  acceleration: 18
+  deceleration: 24
+  mouseYawSensitivity: 360
+  gravity: -30
+  jumpHeight: 1.2
+  coyoteTime: 0.12
+  jumpCooldown: 0.15
+  dodgeDistance: 4
+  dodgeDuration: 0.2
+  dodgeCooldown: 0.5
+  minDodgeInput: 0.2
+  crouchHeightMultiplier: 0.6
+  moveAction: {fileID: 0}
+  lookAction: {fileID: 0}
+  jumpAction: {fileID: 0}
+  sprintAction: {fileID: 0}
+  dodgeAction: {fileID: 0}
+  crouchAction: {fileID: 0}
 --- !u!1 &1424071375
 GameObject:
   m_ObjectHideFlags: 0
@@ -594,6 +604,9 @@ MonoBehaviour:
   sprintFOV: 70
   fovLerpSpeed: 6
   sprintSpeedThreshold: 6.5
+  lookAction: {fileID: 0}
+  zoomAction: {fileID: 0}
+  shoulderSwapAction: {fileID: 0}
 --- !u!114 &2041011205
 MonoBehaviour:
   m_ObjectHideFlags: 0
