@@ -22,6 +22,7 @@ public abstract class Utility{
     public abstract List<Type>availableNPCs {get;}
     public bool isRoot = false;
     public Utility? nextUtility = null;
+    public Behavior? currentBehavior = null;
 
     public abstract void Execute(NPC npc);
 }
@@ -38,6 +39,7 @@ public class PriestRoutineStart : Utility
     public override void Execute (NPC npc)
     {
          var move = npc.gameObject.AddComponent<MoveBehaviour>();
+         currentBehavior = move;
          move.Configure(this, destination);
          move.Execute();
     }

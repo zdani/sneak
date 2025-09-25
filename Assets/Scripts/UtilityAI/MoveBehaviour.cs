@@ -1,6 +1,6 @@
 using UnityEngine;
 
-public class MoveBehaviour : MonoBehaviour, IBehavior
+public class MoveBehaviour : Behavior
 {
     public float speed = 5f;
     private Vector3 targetPosition;
@@ -39,17 +39,14 @@ public class MoveBehaviour : MonoBehaviour, IBehavior
         }
     }
 
-    public void Execute()
+    public override void Execute()
     {
         isMoving = true;
     }
 
-    public void Cancel()
+    public override void Cancel()
     {
-        if (isMoving)
-        {
-            isMoving = false;
-            EventManager.Instance.TriggerUtilityFailure(currentUtility, npc);
-        }
+        isMoving = false;
+        EventManager.Instance.TriggerUtilityFailure(currentUtility, npc);
     }
 }

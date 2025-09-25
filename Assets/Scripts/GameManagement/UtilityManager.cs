@@ -1,4 +1,5 @@
 using System;
+using UnityEngine;
 
 public class UtilityManager{
     public UtilityManager(){
@@ -8,11 +9,13 @@ public class UtilityManager{
 
     private void HandleUtilityFailure(Utility utility, NPC npc)
     {
+        CleanupBehaviors(utility);
         FindBestRootUtility(npc).Execute(npc);
     }
 
     private void HandleUtilityComplete(Utility utility, NPC npc)
     {
+        CleanupBehaviors(utility);
         if (utility.nextUtility != null){
             utility.nextUtility.Execute(npc);
         }
@@ -23,5 +26,11 @@ public class UtilityManager{
 
     private Utility FindBestRootUtility(NPC npc){
         throw new NotImplementedException();
+    }
+
+    private void CleanupBehaviors(Utility utility){
+        
+        var behavior = utility.currentBehavior;
+        UnityEngine.Object.Destroy(behavior);      
     }
 }
