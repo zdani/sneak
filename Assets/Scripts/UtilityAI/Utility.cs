@@ -5,6 +5,8 @@ Add root search when there is no next utility
 Utilities can be interupted in the middle. 
 root utilities need scores
 
+use ibehaviour to call configure and execute instead of the concrete
+completion or failure should remove the component and delete it
 Each NPC has local knowledge and global knowledge
 */
 
@@ -35,7 +37,9 @@ public class PriestRoutineStart : Utility
 
     public override void Execute (NPC npc)
     {
-         npc.MoveTo(destination, this);
+         var move = npc.gameObject.AddComponent<MoveBehaviour>();
+         move.Configure(this, destination);
+         move.Execute();
     }
 }
 
@@ -48,7 +52,9 @@ public class PriestRoutineSayPrayers : Utility
 
      public override void Execute (NPC npc)
     {
-         npc.MoveTo(destination, this);
+         var move = npc.gameObject.AddComponent<MoveBehaviour>();
+         move.Configure(this, destination);
+         move.Execute();
     }
 }
 
