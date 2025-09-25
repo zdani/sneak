@@ -2,25 +2,41 @@ using UnityEngine;
 
 public abstract class NPC : MonoBehaviour
 {
-    public float walkSpeed = 2f;
+    public float speed = 5f;
+    private Vector3 targetPosition;
+    private bool isMoving = false;
+    protected Utility utility;
 
-    private bool _isMoving = false;
-    private Vector3 _moveTarget = Vector3.zero;
-
-    public bool MoveTo(Vector3 destination){
-        _moveTarget = destination;
-        _isMoving = true;
-        return true;
+    public void MoveTo(Vector3 destination, Utility utility)
+    {
+        targetPosition = destination;
+        isMoving = true;
+        this.utility = utility;
     }
 
-    void Update(){
-        if (!_isMoving) return;
+    private void Update()
+    {
+        if (!isMoving) return;
 
-        float step = walkSpeed * Time.deltaTime;
-        transform.position = Vector3.MoveTowards(transform.position, _moveTarget, step);
+        transform.position = Vector3.MoveTowards(
+            transform.position,
+            targetPosition,
+            speed * Time.deltaTime
+        );
 
-        if (Vector3.SqrMagnitude(_moveTarget - transform.position) <= 0.0001f){
-            _isMoving = false;
+        if (Vector3.Distance(transform.position, targetPosition) < 0.01f)
+        {
+            isMoving = false;
+            EventManager.Instance.TriggerUtilityComplete(utility, this);
+        }
+    }
+
+    public void CancelMove()
+    {
+        if (isMoving)
+        {
+            isMoving = false;
+            EventManager.Instance.TriggerUtilityFailure(utility, this);
         }
     }
 }

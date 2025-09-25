@@ -21,15 +21,15 @@ public abstract class Utility{
     public bool isRoot = false;
     public Utility? nextUtility = null;
 
-    protected abstract bool ExecuteInternal(NPC npc);
+    protected abstract void ExecuteInternal(NPC npc);
     public void Execute(NPC npc){
-        var result = ExecuteInternal(npc);
-        if (result){
+        ExecuteInternal(npc);
+        /*if (result){
             EventManager.Instance.TriggerUtilityComplete(this, npc);
         }
         else{
             EventManager.Instance.TriggerUtilityFailure(this, npc);
-        }
+        }*/
     }
 }
 
@@ -42,9 +42,9 @@ public class PriestRoutineStart : Utility
         nextUtility = new PriestRoutineSayPrayers();
     }
 
-    protected override bool ExecuteInternal (NPC npc)
+    protected override void ExecuteInternal (NPC npc)
     {
-        return npc.MoveTo(destination);
+         npc.MoveTo(destination);
     }
 }
 
@@ -55,9 +55,9 @@ public class PriestRoutineSayPrayers : Utility
     public PriestRoutineSayPrayers(){
     }
 
-    protected override bool ExecuteInternal (NPC npc)
+    protected override void ExecuteInternal (NPC npc)
     {
-        return npc.MoveTo(destination);
+         npc.MoveTo(destination);
     }
 }
 
@@ -67,7 +67,7 @@ public class CurePoisonUtility : Utility{
         isRoot = true;
     }
 
-    protected override bool ExecuteInternal(NPC npc)
+    protected override void ExecuteInternal(NPC npc)
     {
         throw new NotImplementedException();
     }
@@ -79,7 +79,7 @@ public class SearchScrollUtility : Utility{
         isRoot = true;
     }
 
-    protected override bool ExecuteInternal(NPC npc)
+    protected override void ExecuteInternal(NPC npc)
     {
         throw new NotImplementedException();
     }
