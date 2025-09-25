@@ -5,8 +5,10 @@ public class MoveBehaviour : Behavior
     public float speed = 5f;
     private Vector3 targetPosition;
     private bool isMoving = false;
+     #nullable disable
     private Utility currentUtility;
     private NPC npc;
+    #nullable enable
 
     void Awake()
     {
