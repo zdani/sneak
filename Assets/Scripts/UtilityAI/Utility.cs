@@ -1,11 +1,11 @@
 
 /*
-Each utility has a next action to perform. Check for preconditoins. If we cant perform it, evaluate all top level nodes to find the best one.
-Exectute should be run async. Once it completes, trigger an event. The event will run the next utility. If there is non, find the next best root utility.
+Add preconditions and checks for preconditions
+Add root search when there is no next utility
 Utilities can be interupted in the middle. 
-Each NPC has local knowledge and global knowledge
+root utilities need scores
 
-Add runner class that searches top level nodes appropriate for the current NPC
+Each NPC has local knowledge and global knowledge
 */
 
 
@@ -13,13 +13,24 @@ Add runner class that searches top level nodes appropriate for the current NPC
 using System.Collections.Generic;
 using System;
 using UnityEngine;
+using System.Collections;
 
 
 public abstract class Utility{
     public abstract List<Type>availableNPCs {get;}
-    public abstract void Execute(NPC npc);
     public bool isRoot = false;
     public Utility? nextUtility = null;
+
+    protected abstract bool ExecuteInternal(NPC npc);
+    public void Execute(NPC npc){
+        var result = ExecuteInternal(npc);
+        if (result){
+            EventManager.Instance.TriggerUtilityComplete(this, npc);
+        }
+        else{
+            EventManager.Instance.TriggerUtilityFailure(this, npc);
+        }
+    }
 }
 
 public class PriestRoutineStart : Utility
@@ -31,19 +42,9 @@ public class PriestRoutineStart : Utility
         nextUtility = new PriestRoutineSayPrayers();
     }
 
-    public override void Execute(NPC npc)
+    protected override bool ExecuteInternal (NPC npc)
     {
-        var currentPosition = npc.transform.position;
-        if (currentPosition != destination)
-        {
-            float moveSpeed = 2f;
-            var newPosition = Vector3.MoveTowards(
-                currentPosition,
-                destination,
-                moveSpeed * Time.deltaTime
-            );
-            npc.transform.position = newPosition;
-        }
+        return npc.MoveTo(destination);
     }
 }
 
@@ -54,9 +55,9 @@ public class PriestRoutineSayPrayers : Utility
     public PriestRoutineSayPrayers(){
     }
 
-    public override void Execute(NPC npc)
+    protected override bool ExecuteInternal (NPC npc)
     {
-        
+        return npc.MoveTo(destination);
     }
 }
 
@@ -66,9 +67,9 @@ public class CurePoisonUtility : Utility{
         isRoot = true;
     }
 
-    public override void Execute(NPC npc)
+    protected override bool ExecuteInternal(NPC npc)
     {
-        throw new System.NotImplementedException();
+        throw new NotImplementedException();
     }
 }
 
@@ -78,8 +79,8 @@ public class SearchScrollUtility : Utility{
         isRoot = true;
     }
 
-    public override void Execute(NPC npc)
+    protected override bool ExecuteInternal(NPC npc)
     {
-        throw new System.NotImplementedException();
+        throw new NotImplementedException();
     }
 }
