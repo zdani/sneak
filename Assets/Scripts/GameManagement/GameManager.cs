@@ -2,6 +2,7 @@ using UnityEngine;
 using UnityEngine.SceneManagement;
 using System;
 using TMPro;
+using Unity.Behavior;
 
 public class GameManager : MonoBehaviour
 {
@@ -14,10 +15,20 @@ public class GameManager : MonoBehaviour
 
     void Awake()
     {
+        Debug.LogWarning("Awake gamemanager");
         ServiceLocator.RegisterScoringManager(new ScoringManager());
+        //new UtilityManager();
         var mainPlayer = new Player("Main Player");
         EventManager.Instance.TriggerScoreChanged(mainPlayer, 0);
         EventManager.Instance.OnGameOver += HandleGameOver;
+    }
+
+    void Update()
+    {
+        if (Input.GetKeyDown(KeyCode.T))
+        {
+            HandleTKeyPressed();
+        }
     }
 
     private void OnDestroy()
@@ -40,6 +51,13 @@ public class GameManager : MonoBehaviour
         var textComponent = GameOverPanel.transform.Find("Text1").GetComponent<TMP_Text>();
         textComponent.text = text;
         GameOverPanel.gameObject.SetActive(true);
+    }
+
+    private void HandleTKeyPressed()
+    {
+        var priest = GameObject.Find("Priest");
+        var agent = priest.GetComponent<BehaviorGraphAgent>();
+        agent.SetVariableValue("PriestStatus", Status.Poison);
     }
 
     public void HandleRestartClick() => HandleStartClick();
