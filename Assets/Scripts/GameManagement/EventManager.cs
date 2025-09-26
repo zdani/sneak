@@ -11,12 +11,16 @@ public class EventManager
 
     // Event declarations
     public event Action<Player>? OnGameOver;
+    public event Action<Utility, NPC>? OnUtilityComplete;
+    public event Action<Utility, NPC>? OnUtilityFailure;
     public event Action<Player, int>? OnScoreChanged;
 
 
     // Triggers
     public void TriggerGameOver(Player winningPlayer) => EnqueueEvent(OnGameOver, winningPlayer);
     public void TriggerScoreChanged(Player player, int score) => EnqueueEvent(OnScoreChanged, player, score);
+    public void TriggerUtilityComplete(Utility u, NPC npc) => EnqueueEvent(OnUtilityComplete, u, npc);
+    public void TriggerUtilityFailure(Utility u, NPC npc) => EnqueueEvent(OnUtilityFailure, u, npc);
    
 
 
