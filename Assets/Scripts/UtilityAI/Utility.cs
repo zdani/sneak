@@ -4,82 +4,79 @@ Add preconditions and checks for preconditions
 Add root search when there is no next utility
 Utilities can be interupted in the middle. 
 root utilities need scores
+graph needs to be acyclic for now because we spawn the chain of behaviour components at the start 
+need to preconstruct the graph. Priest should point to an instance, and not create a node on demand.
 
-use ibehaviour to call configure and execute instead of the concrete
-completion or failure should remove the component and delete it
+
+check this works: completion or failure should remove the component and delete it
+
+
 Each NPC has local knowledge and global knowledge
 */
-
-
 
 using System.Collections.Generic;
 using System;
 using UnityEngine;
-using System.Collections;
 
+public abstract class Utility
+{
+    public abstract List<Type> availableNPCs { get; }
+    public void Execute() => currentBehavior.Execute();
+    protected abstract void Initialize(NPC npc);
+    public Utility? nextUtility;
+    
 
-public abstract class Utility{
-    public abstract List<Type>availableNPCs {get;}
-    public bool isRoot = false;
-    public Utility? nextUtility = null;
-    public Behavior? currentBehavior = null;
+#nullable disable
+    public Behavior currentBehavior;
+#nullable enable
 
-    public abstract void Execute(NPC npc);
 }
 
 public class PriestRoutineStart : Utility
 {
     Vector3 destination = Vector3.zero;
     public override List<Type> availableNPCs => new(){ typeof(Priest) };
-    public PriestRoutineStart(){
-        isRoot = true;
+    protected override void Initialize(NPC npc){
         nextUtility = new PriestRoutineSayPrayers();
-    }
-
-    public override void Execute (NPC npc)
-    {
-         var move = npc.gameObject.AddComponent<MoveBehaviour>();
-         currentBehavior = move;
-         move.Configure(this, destination);
-         move.Execute();
+        var move = npc.gameObject.AddComponent<MoveBehaviour>();
+        currentBehavior = move;
+        move.Initialize(this, npc);
     }
 }
 
 public class PriestRoutineSayPrayers : Utility
 {
     Vector3 destination = Vector3.zero;
-    public override List<Type> availableNPCs => new(){ typeof(Priest) };
-    public PriestRoutineSayPrayers(){
-    }
-
-     public override void Execute (NPC npc)
+    public override List<Type> availableNPCs => new() { typeof(Priest) };
+    
+    protected override void Initialize(NPC npc)
     {
-         var move = npc.gameObject.AddComponent<MoveBehaviour>();
-         move.Configure(this, destination);
-         move.Execute();
+        var move = npc.gameObject.AddComponent<MoveBehaviour>();
+        currentBehavior = move;
+        move.Initialize(this, npc);
     }
 }
 
-public class CurePoisonUtility : Utility{
-    public override List<Type> availableNPCs => new(){ typeof(NPC) };
-    public CurePoisonUtility(){
-        isRoot = true;
-    }
+public class CurePoisonUtility : Utility
+{
+    public override List<Type> availableNPCs => new() { typeof(NPC) };
 
-    public override void Execute (NPC npc)
+    protected override void Initialize(NPC npc)
     {
-        throw new NotImplementedException();
+        
+        var DoNothingBehaviour = npc.gameObject.AddComponent<DoNothingBehaviour>();
+        currentBehavior = DoNothingBehaviour;
+        
     }
 }
 
 public class SearchScrollUtility : Utility{
     public override List<Type> availableNPCs =>  new(){ typeof(Priest) };
-    public SearchScrollUtility(){
-        isRoot = true;
-    }
 
-     public override void Execute (NPC npc)
-    {
-        throw new NotImplementedException();
-    }
+    protected override void Initialize(NPC npc) 
+        {
+            var DoNothingBehaviour = npc.gameObject.AddComponent<DoNothingBehaviour>();
+            currentBehavior = DoNothingBehaviour;
+        }
+    
 }
